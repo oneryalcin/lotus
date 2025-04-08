@@ -35,6 +35,7 @@ Creating a LM object to use Meta-Llama-3-8B-Instruct on vLLM
         max_ctx_len=8000,
         max_tokens=1000)
 
+
 Usage Limits
 -----------
 The LM class supports setting usage limits to control costs and token consumption. You can set limits on:
@@ -97,4 +98,3 @@ You can monitor your usage with the ``print_total_usage`` method:
 
     # Reset stats if needed
     lm.reset_stats()
-
