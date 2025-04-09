@@ -14,6 +14,7 @@ To get started, you will need to install the lotus submodule as follows:
     pip install lotus[arxiv]
 
 Then you can run your lotus program:
+
 .. code-block:: python
 
     import lotus
