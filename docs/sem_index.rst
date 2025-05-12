@@ -46,6 +46,9 @@ Example
     df = df.sem_index("Course Name", "index_dir")
     print(df)
 
+    # upon reloading
+    df = df.load_sem_index("Course Name, "index_dir")
+
 Output:
 
 +----+---------------------------------------------+
