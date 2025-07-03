@@ -36,6 +36,34 @@ Creating a LM object to use Meta-Llama-3-8B-Instruct on vLLM
         max_tokens=1000)
 
 
+Rate Limits
+-----------
+The LM class supports rate limiting through the ``max_batch_size`` parameter to control the number of concurrent requests made to the LLM provider. This helps prevent hitting API rate limits and ensures stable performance.
+
+Example setting rate limits:
+
+.. code-block:: python
+
+    from lotus.models import LM
+    
+    # Limit to 5 concurrent requests
+    lm = LM(
+        model="gpt-4o",
+        max_batch_size=64
+    )
+    
+    # For models with stricter rate limits, use a smaller batch size
+    lm = LM(
+        model="gpt-4o",
+        max_batch_size=10
+    )
+
+The ``max_batch_size`` parameter is particularly useful when:
+- Working with models that have strict API rate limits
+- Processing large datasets that require multiple API calls
+- Ensuring consistent performance across different model providers
+
+
 Usage Limits
 -----------
 The LM class supports setting usage limits to control costs and token consumption. You can set limits on:
