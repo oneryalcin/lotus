@@ -1,11 +1,14 @@
 import hashlib
 import logging
+import math
+import time
 import warnings
 from typing import Any
 
 import litellm
 import numpy as np
 from litellm import batch_completion, completion_cost
+from litellm.exceptions import AuthenticationError
 from litellm.types.utils import ChatCompletionTokenLogprob, Choices, ModelResponse
 from litellm.utils import token_counter
 from openai._exceptions import OpenAIError
@@ -35,6 +38,7 @@ class LM:
         max_ctx_len: int = 128000,
         max_tokens: int = 512,
         max_batch_size: int = 64,
+        rate_limit: int | None = None,
         tokenizer: Tokenizer | None = None,
         cache=None,
         physical_usage_limit: UsageLimit = UsageLimit(),
@@ -49,15 +53,25 @@ class LM:
             max_ctx_len (int): Maximum context length in tokens. Defaults to 128000.
             max_tokens (int): Maximum number of tokens to generate. Defaults to 512.
             max_batch_size (int): Maximum batch size for concurrent requests. Defaults to 64.
+            rate_limit (int | None): Maximum requests per minute. If set, caps max_batch_size and adds delays.
             tokenizer (Tokenizer | None): Custom tokenizer instance. Defaults to None.
             cache: Cache instance to use. Defaults to None.
-            usage_limit (UsageLimit): Usage limits for the model. Defaults to UsageLimit().
+            physical_usage_limit (UsageLimit): Physical usage limits for the model. Defaults to UsageLimit().
+            virtual_usage_limit (UsageLimit): Virtual usage limits for the model. Defaults to UsageLimit().
             **kwargs: Additional keyword arguments passed to the underlying LLM API.
         """
         self.model = model
         self.max_ctx_len = max_ctx_len
         self.max_tokens = max_tokens
-        self.max_batch_size = max_batch_size
+        self.rate_limit = rate_limit
+        if rate_limit is not None:
+            self._rate_limit_delay = 60 / rate_limit
+            if max_batch_size is not None:
+                self.max_batch_size = min(rate_limit, max_batch_size)
+            else:
+                self.max_batch_size = rate_limit
+        else:
+            self.max_batch_size = max_batch_size
         self.tokenizer = tokenizer
         self.kwargs = dict(temperature=temperature, max_tokens=max_tokens, **kwargs)
 
@@ -135,14 +149,46 @@ class LM:
         )
 
         batch = [msg for msg, _ in uncached_data]
-        uncached_responses = batch_completion(
-            self.model, batch, drop_params=True, max_workers=self.max_batch_size, **all_kwargs
-        )
 
-        pbar.update(total_calls)
+        if self.rate_limit is not None:
+            uncached_responses = self._process_with_rate_limiting(batch, all_kwargs, pbar)
+        else:
+            uncached_responses = batch_completion(
+                self.model, batch, drop_params=True, max_workers=self.max_batch_size, **all_kwargs
+            )
+            pbar.update(total_calls)
+
         pbar.close()
-
         return uncached_responses
+
+    def _process_with_rate_limiting(self, batch, all_kwargs, pbar):
+        responses = []
+        num_batches = math.ceil(len(batch) / self.max_batch_size)
+        min_interval_per_request = 60 / self.rate_limit  # seconds per request
+
+        for i in range(num_batches):
+            start_time = time.time()
+            start_idx = i * self.max_batch_size
+            end_idx = min((i + 1) * self.max_batch_size, len(batch))
+            sub_batch = batch[start_idx:end_idx]
+            sub_responses = batch_completion(
+                self.model, sub_batch, drop_params=True, max_workers=self.max_batch_size, **all_kwargs
+            )
+            responses.extend(sub_responses)
+            pbar.update(len(sub_batch))
+            end_time = time.time()
+            elapsed = end_time - start_time
+
+            # Calculate required delay based on number of requests in this batch
+            # Each request should be spaced by min_interval_per_request
+            required_time_for_batch = len(sub_batch) * min_interval_per_request
+
+            # Only sleep if the batch was faster than the required time
+            if i < num_batches - 1:  # Don't sleep after the last batch
+                to_sleep = required_time_for_batch - elapsed
+                if to_sleep > 0:
+                    time.sleep(to_sleep)
+        return responses
 
     def _cache_response(self, response, hash):
         """Caches a response and updates stats if successful."""
@@ -211,6 +257,10 @@ class LM:
             self._check_usage_limit(self.stats.physical_usage, self.physical_usage_limit, "physical")
 
     def _get_top_choice(self, response: ModelResponse) -> str:
+        # Handle authentication errors and other exceptions
+        if isinstance(response, (AuthenticationError, OpenAIError)):
+            raise response
+
         choice = response.choices[0]
         assert isinstance(choice, Choices)
         if choice.message.content is None:
@@ -218,6 +268,10 @@ class LM:
         return choice.message.content
 
     def _get_top_choice_logprobs(self, response: ModelResponse) -> list[ChatCompletionTokenLogprob]:
+        # Handle authentication errors and other exceptions
+        if isinstance(response, (AuthenticationError, OpenAIError)):
+            raise response
+
         choice = response.choices[0]
         assert isinstance(choice, Choices)
         logprobs = choice.logprobs["content"]
