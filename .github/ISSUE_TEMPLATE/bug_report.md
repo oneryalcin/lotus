@@ -7,13 +7,6 @@ assignees: ''
 
 ---
 
-## Essential Elements of an Effective Bug Report Checklist
-- [ ] Clear description of the bug and expected behavior
-- [ ] Steps to reproduce the issue
-- [ ] Environment information (OS, Python version, package versions)
-- [ ] Error messages, logs, or screenshots
-- [ ] Minimal reproduction example (if applicable)
-
 PLEASE FILL IN THE BUG REPORT BELOW ENSURING ALL CHECKLIST ITEMS ABOVE HAVE BEEN CONSIDERED.
 
 ## Bug Description
