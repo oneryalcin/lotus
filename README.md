@@ -18,7 +18,7 @@ LOTUS makes LLM-powered data processing fast and easy.
 
 LOTUS (**L**LMs **O**ver **T**ables of **U**nstructured and **S**tructured Data) provides a declarative programming model and an optimized query engine for serving powerful reasoning-based query pipelines over structured and unstructured data! We provide a simple and intuitive Pandas-like API, that implements **semantic operators**. 
 
-For trouble-shooting or feature requests, please raise an issue and we'll get to it promptly. To share feedback and applications you're working on, you can send us a message on our [community slack](https://join.slack.com/t/lotus-fnm8919/shared_invite/zt-2tnq6948j-juGuSIR0__fsh~kUmZ6TJw), or send an email (lianapat@stanford.edu).
+For trouble-shooting or feature requests, please raise an issue and we'll get to it promptly. To share feedback and applications you're working on, you can send us a message on our [community slack](https://join.slack.com/t/lotus-fnm8919/shared_invite/zt-319k232lx-nEcLF~5w274dcQLmw2Wqyg), or send an email (lianapat@stanford.edu).
 
 # Installation
 For the latest stable release:
@@ -130,7 +130,7 @@ For development setup and detailed contribution guidelines, see our [Contributin
 
 ## Community
 
-- **Slack**: [Join our community](https://join.slack.com/t/lotus-fnm8919/shared_invite/zt-319k232lx-nEcLF~5w274dcQLmw2Wqyg)
+- **Slack**: [Join our community](https://join.slack.com/t/lotus-fnm8919/shared_invite/zt-319k232lx-nEcLF~5w274dcQLmw2Wqyg) 
 - **Email**: lianapat@stanford.edu
 - **Discussions**: [GitHub Discussions](https://github.com/lotus-data/lotus/discussions)
 
