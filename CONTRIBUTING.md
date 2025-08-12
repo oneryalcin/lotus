@@ -180,8 +180,17 @@ git commit -m "Your commit message"
 
 ### Writing Tests
 
-- Write tests for new functionality
-- Ensure good test coverage
+We maintain two test suites:
+- lotus/.github/tests: essential tests for CI/CD to ensure core functionality
+- lotus/tests: additional tests for comprehensive testing of non-core functionality and integrations
+
+If you are unsure where to add your new tests, we recommend starting them within lotus/tests and highlighting your question in your PR, so that the maintainers can respond with their suggestions.
+
+You can find useful documentation, conceptual explanations, and best practices for writing pytests [here](https://docs.pytest.org/en/stable/getting-started.html).
+
+Our general guidelines for testing include the following:
+- Write tests for new functionality, ensuring full coverage of possible code paths and edge cases
+- Avoid writing tests that depend on specific model behaviors. For example, when writing a `sem_map` test, we would avoid assertions on the exact projection output, and instead write assertions that the expected column exists in the resulting dataframe with non-empty string attributes.
 - Use descriptive test names
 - Mock external dependencies
 
