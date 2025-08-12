@@ -27,7 +27,7 @@ Before contributing, please:
 
 ### Prerequisites
 
-- Python 3.19
+- Python 3.10
 - Git
 - Conda (recommended) or virtual environment
 
