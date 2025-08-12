@@ -187,6 +187,17 @@ git commit -m "Your commit message"
 
 ### Running Tests
 
+- first export the following enviorment variables:
+
+```
+export ENABLE_OPENAI_TESTS="true"
+export ENABLE_LOCAL_TESTS="true"
+export OPENAI_API_KEY="<your key>"
+```
+
+
+- then run your pytest
+
 ```bash
 # Run all tests
 pytest
