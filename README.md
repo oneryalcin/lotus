@@ -58,7 +58,7 @@ import lotus
 from lotus.models import LM
 
 # configure the LM, and remember to export your API key
-lm = LM(model="gpt-4o-mini")
+lm = LM(model="gpt-4.1-nano")
 lotus.settings.configure(lm=lm)
 
 # create dataframes with course names and skills
