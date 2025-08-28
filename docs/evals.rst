@@ -3,7 +3,7 @@ LLM-based Evaluation Suite
 
 Overview
 --------
-LOTUS provides a comprehensive evaluation framework instantiating LLM-as-a-Judge methos. The evaluation module supports both single response evaluation and pairwise comparisons, making it ideal for model evaluation, response quality assessment, and A/B testing scenarios.
+LOTUS provides a comprehensive evaluation framework instantiating LLM-as-a-Judge methods. The evaluation module supports both single response evaluation and pairwise comparisons, making it ideal for model evaluation, response quality assessment, and A/B testing scenarios.
 
 The evaluation framework includes two main components:
 
