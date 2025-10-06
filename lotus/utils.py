@@ -57,6 +57,8 @@ def cluster(col_name: str, ncentroids: int) -> Callable[[pd.DataFrame, int, bool
 
         ids = df.index.tolist()  # assumes df index hasn't been resest and corresponds to faiss index ids
         vec_set = vs.get_vectors_from_index(col_index_dir, ids)
+        # FAISS requires float32, but some VS implementations return float64
+        vec_set = vec_set.astype(np.float32)
         d = vec_set.shape[1]
         kmeans = faiss.Kmeans(d, ncentroids, niter=niter, verbose=verbose)
         kmeans.train(vec_set)
