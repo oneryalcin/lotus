@@ -1,0 +1,48 @@
+# Example: Academic Research Pipeline
+# This pipeline searches for papers, filters them, extracts key information,
+# and ranks them by relevance to specific research questions.
+
+model:
+  name: gpt-4o-mini
+
+steps:
+  # Step 1: Search ArXiv for papers on your topic
+  - type: search
+    name: initial_papers
+    corpus: arxiv
+    query: "semantic operators database systems"
+    num_results: 30
+
+  # Step 2: Filter for papers that discuss practical implementations
+  - type: filter
+    name: practical_papers
+    input: initial_papers
+    condition: "{abstract} discusses practical implementation or real-world applications"
+    output: practical_papers.csv
+
+  # Step 3: Extract key information from abstracts
+  - type: extract
+    name: paper_analysis
+    input: practical_papers
+    input_cols: [abstract]
+    output_cols:
+      main_contribution: "What is the main contribution of this paper?"
+      methods: "What methods or techniques are used?"
+      evaluation: "How was the work evaluated?"
+      limitations: "What are the stated or implied limitations?"
+    output: analyzed_papers.csv
+
+  # Step 4: Rank papers by relevance to your specific research question
+  - type: topk
+    name: most_relevant
+    input: paper_analysis
+    criteria: "Which {main_contribution} is most relevant to building production data processing systems?"
+    k: 5
+    output: top_papers.csv
+
+  # Step 5: Generate a summary of the top papers
+  - type: aggregate
+    name: research_summary
+    input: most_relevant
+    instruction: "Create a structured summary of the key trends, methods, and findings across these papers on {title} focusing on {main_contribution} and {methods}"
+    output: research_summary.json

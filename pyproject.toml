@@ -32,6 +32,9 @@ dependencies = [
     "tqdm>=4.66.4,<5.0.0",
 ]
 
+[tool.setuptools]
+py-modules = ["lotus_cli", "lotus_pipeline"]
+
 [project.optional-dependencies]
 docs = [
     "sphinx",
@@ -62,14 +65,19 @@ qdrant = [
 data_connectors = [
     "sqlalchemy",
     "boto3",
-    "io",
 ]
 web_search = [
     "requests",
     "azure-cognitiveservices-search-websearch",
     "tavily-python"
 ]
+cli = [
+    "pyyaml",
+]
 
+[project.scripts]
+lotus = "lotus_cli:main"
+lotus-pipeline = "lotus_pipeline:main"
 
 [tool.ruff]
 line-length = 120
