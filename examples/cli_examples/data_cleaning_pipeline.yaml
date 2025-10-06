@@ -1,0 +1,44 @@
+# Example: Data Cleaning and Enrichment Pipeline
+# This pipeline cleans customer data, validates fields, and enriches it with additional information
+
+model:
+  name: gpt-4o-mini
+
+steps:
+  # Step 1: Filter valid entries
+  - type: filter
+    name: valid_entries
+    source: customers.csv
+    condition: "{email} appears to be a valid email address format"
+
+  # Step 2: Extract and normalize company information
+  - type: extract
+    name: company_info
+    input: valid_entries
+    input_cols: [company_description]
+    output_cols:
+      industry: "What industry is this company in?"
+      company_size: "small, medium, or large"
+      primary_product: "What is their main product or service?"
+
+  # Step 3: Validate and clean addresses
+  - type: map
+    name: cleaned_addresses
+    input: company_info
+    instruction: "Standardize and clean this address {address}. Return in format: Street, City, State ZIP"
+    suffix: "_clean_address"
+
+  # Step 4: Identify high-value prospects
+  - type: filter
+    name: high_value
+    input: cleaned_addresses
+    condition: "{company_size} is medium or large AND {industry} is in technology or finance"
+    output: high_value_prospects.csv
+
+  # Step 5: Rank by priority
+  - type: topk
+    name: priority_prospects
+    input: high_value
+    criteria: "Which {company_description} indicates the highest potential for our product?"
+    k: 50
+    output: priority_contacts.csv
