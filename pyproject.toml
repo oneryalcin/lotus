@@ -34,6 +34,7 @@ dependencies = [
 
 [tool.setuptools]
 py-modules = ["lotus_cli", "lotus_pipeline"]
+packages = ["lotus"]
 
 [project.optional-dependencies]
 docs = [
@@ -73,6 +74,10 @@ web_search = [
 ]
 cli = [
     "pyyaml",
+]
+model2vec = [
+    "model2vec",
+    "vicinity",
 ]
 
 [project.scripts]
