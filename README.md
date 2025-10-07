@@ -1,4 +1,7 @@
 # LOTUS: LLM-Powered Data Processing Made Fast, Easy, and Robust
+
+> **Note**: This is a fork of [lotus-data/lotus](https://github.com/lotus-data/lotus) with additional CLI tools, model2vec support, and optimizations.
+
 <!--- BADGES: START --->
 <!--[![Colab Demo](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1OzoJXH13aOwNOIEemClxzNCNYnqSGxVl?usp=sharing)-->
 [![Colab Demo](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1mP65YHHdD6mnZmC5-Uqm2uCXJ4-Kbkhu?usp=sharing)
@@ -21,19 +24,39 @@ LOTUS stands for **L**LMs **O**ver **T**ext, **U**nstructured and **S**tructured
 For trouble-shooting or feature requests, please raise an issue and we'll get to it promptly. To share feedback and applications you're working on, you can send us a message on our [community slack](https://join.slack.com/t/lotus-fnm8919/shared_invite/zt-319k232lx-nEcLF~5w274dcQLmw2Wqyg), or send an email (lianapat@stanford.edu).
 
 # Installation
+
+## Python Library
+
 For the latest stable release:
-```
+```bash
 conda create -n lotus python=3.10 -y
 conda activate lotus
 pip install lotus-ai
 ```
 
-For the latest features, you can alternatively install as follows:
-```
+For the latest features from this fork:
+```bash
 conda create -n lotus python=3.10 -y
 conda activate lotus
-pip install git+https://github.com/lotus-data/lotus.git@main
+pip install git+https://github.com/oneryalcin/lotus.git@main
 ```
+
+## CLI Tool (via uv)
+
+Install as a global CLI tool using `uv`:
+```bash
+# Install the latest version
+uv tool install git+https://github.com/oneryalcin/lotus.git
+
+# Or install from local directory
+uv tool install .
+
+# Then use directly
+lotus filter data.csv --condition "{text} is about AI"
+lotus-pipeline pipeline.yaml
+```
+
+See [CLI_README.md](CLI_README.md) for complete CLI documentation.
 
 
 ## Running on Mac
