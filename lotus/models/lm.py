@@ -59,7 +59,7 @@ class LM:
 
     def __init__(
         self,
-        model: str = "gpt-5-nano",
+        model: str = "gpt-4o-mini",
         temperature: float = 0.0,
         max_ctx_len: int = 128000,
         max_tokens: int = 512,
@@ -75,7 +75,7 @@ class LM:
         Initialize the Language Model instance.
 
         Args:
-            model (str): Name of the model to use. Defaults to "gpt-5-nano".
+            model (str): Name of the model to use. Defaults to "gpt-4o-mini".
             temperature (float): Sampling temperature. Defaults to 0.0.
             max_ctx_len (int): Maximum context length in tokens. Defaults to 128000.
             max_tokens (int): Maximum number of tokens to generate. Defaults to 512.
