@@ -1,0 +1,36 @@
+# Example: Fuzzy Similarity Join Pipeline
+#
+# This pipeline demonstrates joining two datasets with fuzzy name matching.
+# Perfect for matching company names, product names, or entities with variations.
+
+model:
+  embedding_model: minishlab/potion-base-8M
+
+steps:
+  # Load both datasets
+  - type: index
+    name: job_postings
+    source: jobs.csv
+    column: Company Name
+    index_dir: ./jobs_index
+
+  - type: index
+    name: companies
+    source: company_database.csv
+    column: Company
+    index_dir: ./companies_index
+
+  # Fuzzy join: match job posting companies to database
+  - type: sim_join
+    name: matched_jobs
+    input: job_postings
+    right: companies
+    left_col: Company Name
+    right_col: Company
+    k: 1  # Best match only
+    output: jobs_with_company_info.csv
+
+# Example matches:
+# "Google" → "Google Inc" (0.80 similarity)
+# "AWS" → "Amazon Web Services" (0.35 similarity)
+# "Facebook" → "Meta Platforms" (0.11 similarity)

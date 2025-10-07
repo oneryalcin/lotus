@@ -1,0 +1,36 @@
+# Example: Semantic Search Pipeline
+#
+# This pipeline creates a searchable index and queries it.
+# Demonstrates reusable indexes for fast semantic search.
+
+model:
+  embedding_model: minishlab/potion-base-8M
+
+steps:
+  # Step 1: Create a persistent index (one-time operation)
+  - type: index
+    name: searchable_docs
+    source: documentation.csv
+    column: Content
+    index_dir: ./docs_index
+
+  # Step 2: Search for AI-related content
+  - type: semsearch
+    name: ai_docs
+    input: searchable_docs
+    column: Content
+    query: "artificial intelligence and machine learning"
+    k: 5
+    output: ai_related_docs.csv
+
+  # Step 3: Search for security topics
+  - type: semsearch
+    name: security_docs
+    input: searchable_docs
+    column: Content
+    query: "cybersecurity and data protection"
+    k: 5
+    output: security_docs.csv
+
+# Note: The index (docs_index/) can be reused across runs
+# without re-embedding the documents!

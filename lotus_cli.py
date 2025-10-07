@@ -20,6 +20,25 @@ def setup_lotus(model: str = "gpt-4o-mini"):
     return lm
 
 
+def setup_lotus_embeddings(embedding_model: str = "minishlab/potion-base-8M", lm_model: str | None = None):
+    """Initialize LOTUS with embeddings support (model2vec + vicinity)."""
+    import lotus
+    from lotus.models import Model2VecRM
+    from lotus.vector_store import VicinityVS
+
+    rm = Model2VecRM(model=embedding_model)
+    vs = VicinityVS(backend="BASIC", metric="cosine")
+
+    if lm_model:
+        from lotus.models import LM
+        lm = LM(model=lm_model)
+        lotus.settings.configure(lm=lm, rm=rm, vs=vs)
+        return lm, rm, vs
+    else:
+        lotus.settings.configure(rm=rm, vs=vs)
+        return None, rm, vs
+
+
 def load_data(input_path: str):
     """Load data from CSV or JSON file."""
     import pandas as pd
@@ -178,6 +197,182 @@ def cmd_search(args):
         lm.print_total_usage()
 
 
+def cmd_dedup(args):
+    """Remove semantic duplicates from data."""
+    _, rm, vs = setup_lotus_embeddings(args.embedding_model)
+    df = load_data(args.input)
+
+    print(f"Loaded {len(df)} rows from {args.input}")
+    print(f"Deduplicating column: {args.column}")
+    print(f"Threshold: {args.threshold}")
+
+    # Create index directory name
+    import tempfile
+    import os
+    index_dir = args.index_dir if args.index_dir else os.path.join(tempfile.gettempdir(), f"lotus_dedup_{os.getpid()}")
+
+    # Index and deduplicate
+    df = df.sem_index(args.column, index_dir)
+    result = df.sem_dedup(args.column, threshold=args.threshold)
+
+    removed = len(df) - len(result)
+    print(f"Removed {removed} duplicates ({removed/len(df)*100:.1f}%)")
+    print(f"Remaining: {len(result)} rows")
+
+    if args.output:
+        save_data(result, args.output)
+        print(f"Saved to {args.output}")
+    else:
+        print(result)
+
+    # Clean up temp index if not specified
+    if not args.index_dir and not args.keep_index:
+        import shutil
+        if os.path.exists(index_dir):
+            shutil.rmtree(index_dir)
+
+
+def cmd_cluster(args):
+    """Perform semantic clustering on data."""
+    # Fix FAISS threading issues on some platforms
+    import os
+    os.environ['OMP_NUM_THREADS'] = '1'
+
+    _, rm, vs = setup_lotus_embeddings(args.embedding_model)
+    df = load_data(args.input)
+
+    print(f"Loaded {len(df)} rows from {args.input}")
+    print(f"Clustering column: {args.column}")
+    print(f"Number of clusters: {args.num_clusters}")
+
+    # Create index directory name
+    import tempfile
+    import os
+    index_dir = args.index_dir if args.index_dir else os.path.join(tempfile.gettempdir(), f"lotus_cluster_{os.getpid()}")
+
+    # Index and cluster
+    df = df.sem_index(args.column, index_dir)
+    result = df.sem_cluster_by(args.column, ncentroids=args.num_clusters)
+
+    # Show cluster distribution
+    cluster_counts = result['cluster_id'].value_counts().sort_index()
+    print(f"\nCluster distribution:")
+    for cluster_id, count in cluster_counts.items():
+        print(f"  Cluster {cluster_id}: {count} rows")
+
+    if args.output:
+        save_data(result, args.output)
+        print(f"\nSaved to {args.output}")
+    else:
+        print("\nResults:")
+        print(result)
+
+    # Clean up temp index if not specified
+    if not args.index_dir and not args.keep_index:
+        import shutil
+        if os.path.exists(index_dir):
+            shutil.rmtree(index_dir)
+
+
+def cmd_index(args):
+    """Create a persistent vector index for semantic search."""
+    _, rm, vs = setup_lotus_embeddings(args.embedding_model)
+    df = load_data(args.input)
+
+    print(f"Loaded {len(df)} rows from {args.input}")
+    print(f"Indexing column: {args.column}")
+    print(f"Index directory: {args.index_dir}")
+
+    # Create index
+    df = df.sem_index(args.column, args.index_dir)
+
+    print(f"✓ Indexed {len(df)} vectors")
+    print(f"✓ Index saved to {args.index_dir}")
+    print(f"\nUse 'lotus semsearch' to query this index")
+
+
+def cmd_semsearch(args):
+    """Search a pre-built index with semantic queries."""
+    _, rm, vs = setup_lotus_embeddings(args.embedding_model)
+
+    # Load the indexed data
+    if not args.data:
+        raise ValueError("--data is required: path to the original CSV/JSON file that was indexed")
+
+    df = load_data(args.data)
+
+    print(f"Loaded {len(df)} rows from {args.data}")
+    print(f"Loading index from: {args.index_dir}")
+    print(f"Query: {args.query}")
+    print(f"Top K: {args.k}")
+
+    # Load index and search
+    df = df.sem_index(args.column, args.index_dir)
+    result = df.sem_search(args.column, args.query, K=args.k)
+
+    print(f"\nFound {len(result)} results")
+
+    if args.output:
+        save_data(result, args.output)
+        print(f"Saved to {args.output}")
+    else:
+        print("\nResults:")
+        print(result)
+
+
+def cmd_simjoin(args):
+    """Perform fuzzy similarity join between two datasets."""
+    _, rm, vs = setup_lotus_embeddings(args.embedding_model)
+
+    # Load both datasets
+    left_df = load_data(args.left)
+    right_df = load_data(args.right)
+
+    print(f"Loaded left dataset: {len(left_df)} rows from {args.left}")
+    print(f"Loaded right dataset: {len(right_df)} rows from {args.right}")
+    print(f"Joining on: {args.left_col} ~ {args.right_col}")
+    print(f"Top K matches per row: {args.k}")
+
+    # Create index directories
+    import tempfile
+    import os
+    left_index = args.left_index if args.left_index else os.path.join(tempfile.gettempdir(), f"lotus_left_{os.getpid()}")
+    right_index = args.right_index if args.right_index else os.path.join(tempfile.gettempdir(), f"lotus_right_{os.getpid()}")
+
+    # Index both datasets
+    print("\nIndexing datasets...")
+    left_df = left_df.sem_index(args.left_col, left_index)
+    right_df = right_df.sem_index(args.right_col, right_index)
+
+    # Perform similarity join
+    print("Performing similarity join...")
+    result = left_df.sem_sim_join(
+        right_df,
+        args.left_col,
+        args.right_col,
+        K=args.k
+    )
+
+    print(f"\nJoin complete: {len(result)} result rows")
+
+    if args.output:
+        save_data(result, args.output)
+        print(f"Saved to {args.output}")
+    else:
+        print("\nResults (first 10 rows):")
+        print(result.head(10))
+
+    # Clean up temp indices
+    if not args.left_index and not args.keep_index:
+        import shutil
+        if os.path.exists(left_index):
+            shutil.rmtree(left_index)
+    if not args.right_index and not args.keep_index:
+        import shutil
+        if os.path.exists(right_index):
+            shutil.rmtree(right_index)
+
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -245,6 +440,77 @@ Examples:
     search_parser.add_argument('--topk', '-k', type=int, help='Number of top results after ranking')
     search_parser.add_argument('--output', '-o', help='Output file (prints to stdout if not specified)')
 
+    # Dedup command
+    dedup_parser = subparsers.add_parser('dedup', help='Remove semantic duplicates')
+    dedup_parser.add_argument('input', help='Input CSV or JSON file')
+    dedup_parser.add_argument('--column', '-c', required=True, help='Column to deduplicate on')
+    dedup_parser.add_argument('--threshold', '-t', type=float, default=0.65,
+                              help='Similarity threshold for deduplication (default: 0.65)')
+    dedup_parser.add_argument('--embedding-model', '-e', default='minishlab/potion-base-8M',
+                              help='Embedding model to use (default: minishlab/potion-base-8M)')
+    dedup_parser.add_argument('--index-dir', help='Directory to store/load index (uses temp dir if not specified)')
+    dedup_parser.add_argument('--keep-index', action='store_true',
+                              help='Keep the index after deduplication (only applies to temp indices)')
+    dedup_parser.add_argument('--output', '-o', help='Output file (prints to stdout if not specified)')
+
+    # Cluster command
+    cluster_parser = subparsers.add_parser('cluster', help='Perform semantic clustering')
+    cluster_parser.add_argument('input', help='Input CSV or JSON file')
+    cluster_parser.add_argument('--column', '-c', required=True, help='Column to cluster on')
+    cluster_parser.add_argument('--num-clusters', '-n', type=int, required=True,
+                                help='Number of clusters to create')
+    cluster_parser.add_argument('--embedding-model', '-e', default='minishlab/potion-base-8M',
+                                help='Embedding model to use (default: minishlab/potion-base-8M)')
+    cluster_parser.add_argument('--index-dir', help='Directory to store/load index (uses temp dir if not specified)')
+    cluster_parser.add_argument('--keep-index', action='store_true',
+                                help='Keep the index after clustering (only applies to temp indices)')
+    cluster_parser.add_argument('--output', '-o', help='Output file (prints to stdout if not specified)')
+
+    # Index command
+    index_parser = subparsers.add_parser('index', help='Create a persistent vector index')
+    index_parser.add_argument('input', help='Input CSV or JSON file')
+    index_parser.add_argument('--column', '-c', required=True, help='Column to index')
+    index_parser.add_argument('--index-dir', '-d', required=True,
+                              help='Directory to save the index')
+    index_parser.add_argument('--embedding-model', '-e', default='minishlab/potion-base-8M',
+                              help='Embedding model to use (default: minishlab/potion-base-8M)')
+
+    # Semsearch command
+    semsearch_parser = subparsers.add_parser('semsearch', help='Search a pre-built index')
+    semsearch_parser.add_argument('--data', '-d', required=True,
+                                  help='Original CSV/JSON file that was indexed')
+    semsearch_parser.add_argument('--index-dir', '-i', required=True,
+                                  help='Directory containing the index')
+    semsearch_parser.add_argument('--column', '-c', required=True,
+                                  help='Column that was indexed')
+    semsearch_parser.add_argument('--query', '-q', required=True,
+                                  help='Search query')
+    semsearch_parser.add_argument('--k', '-k', type=int, default=5,
+                                  help='Number of results to return (default: 5)')
+    semsearch_parser.add_argument('--embedding-model', '-e', default='minishlab/potion-base-8M',
+                                  help='Embedding model to use (default: minishlab/potion-base-8M)')
+    semsearch_parser.add_argument('--output', '-o', help='Output file (prints to stdout if not specified)')
+
+    # Sim-join command
+    simjoin_parser = subparsers.add_parser('sim-join', help='Fuzzy similarity join between datasets')
+    simjoin_parser.add_argument('--left', '-l', required=True,
+                                help='Left dataset (CSV or JSON file)')
+    simjoin_parser.add_argument('--right', '-r', required=True,
+                                help='Right dataset (CSV or JSON file)')
+    simjoin_parser.add_argument('--left-col', required=True,
+                                help='Column name in left dataset')
+    simjoin_parser.add_argument('--right-col', required=True,
+                                help='Column name in right dataset')
+    simjoin_parser.add_argument('--k', '-k', type=int, default=1,
+                                help='Number of matches per left row (default: 1)')
+    simjoin_parser.add_argument('--embedding-model', '-e', default='minishlab/potion-base-8M',
+                                help='Embedding model to use (default: minishlab/potion-base-8M)')
+    simjoin_parser.add_argument('--left-index', help='Directory for left dataset index (temp if not specified)')
+    simjoin_parser.add_argument('--right-index', help='Directory for right dataset index (temp if not specified)')
+    simjoin_parser.add_argument('--keep-index', action='store_true',
+                                help='Keep indices after join (only for temp indices)')
+    simjoin_parser.add_argument('--output', '-o', help='Output file (prints to stdout if not specified)')
+
     args = parser.parse_args()
 
     if not args.command:
@@ -262,6 +528,16 @@ Examples:
             cmd_topk(args)
         elif args.command == 'search':
             cmd_search(args)
+        elif args.command == 'dedup':
+            cmd_dedup(args)
+        elif args.command == 'cluster':
+            cmd_cluster(args)
+        elif args.command == 'index':
+            cmd_index(args)
+        elif args.command == 'semsearch':
+            cmd_semsearch(args)
+        elif args.command == 'sim-join':
+            cmd_simjoin(args)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
