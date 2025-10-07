@@ -36,7 +36,10 @@ dependencies = [
 
 [tool.setuptools]
 py-modules = ["lotus_cli", "lotus_pipeline"]
-packages = ["lotus"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["lotus*"]
 
 [project.optional-dependencies]
 docs = [
