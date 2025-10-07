@@ -320,6 +320,59 @@ def cmd_semsearch(args):
         print(result)
 
 
+def cmd_simjoin(args):
+    """Perform fuzzy similarity join between two datasets."""
+    _, rm, vs = setup_lotus_embeddings(args.embedding_model)
+
+    # Load both datasets
+    left_df = load_data(args.left)
+    right_df = load_data(args.right)
+
+    print(f"Loaded left dataset: {len(left_df)} rows from {args.left}")
+    print(f"Loaded right dataset: {len(right_df)} rows from {args.right}")
+    print(f"Joining on: {args.left_col} ~ {args.right_col}")
+    print(f"Top K matches per row: {args.k}")
+
+    # Create index directories
+    import tempfile
+    import os
+    left_index = args.left_index if args.left_index else os.path.join(tempfile.gettempdir(), f"lotus_left_{os.getpid()}")
+    right_index = args.right_index if args.right_index else os.path.join(tempfile.gettempdir(), f"lotus_right_{os.getpid()}")
+
+    # Index both datasets
+    print("\nIndexing datasets...")
+    left_df = left_df.sem_index(args.left_col, left_index)
+    right_df = right_df.sem_index(args.right_col, right_index)
+
+    # Perform similarity join
+    print("Performing similarity join...")
+    result = left_df.sem_sim_join(
+        right_df,
+        args.left_col,
+        args.right_col,
+        K=args.k
+    )
+
+    print(f"\nJoin complete: {len(result)} result rows")
+
+    if args.output:
+        save_data(result, args.output)
+        print(f"Saved to {args.output}")
+    else:
+        print("\nResults (first 10 rows):")
+        print(result.head(10))
+
+    # Clean up temp indices
+    if not args.left_index and not args.keep_index:
+        import shutil
+        if os.path.exists(left_index):
+            shutil.rmtree(left_index)
+    if not args.right_index and not args.keep_index:
+        import shutil
+        if os.path.exists(right_index):
+            shutil.rmtree(right_index)
+
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -438,6 +491,26 @@ Examples:
                                   help='Embedding model to use (default: minishlab/potion-base-8M)')
     semsearch_parser.add_argument('--output', '-o', help='Output file (prints to stdout if not specified)')
 
+    # Sim-join command
+    simjoin_parser = subparsers.add_parser('sim-join', help='Fuzzy similarity join between datasets')
+    simjoin_parser.add_argument('--left', '-l', required=True,
+                                help='Left dataset (CSV or JSON file)')
+    simjoin_parser.add_argument('--right', '-r', required=True,
+                                help='Right dataset (CSV or JSON file)')
+    simjoin_parser.add_argument('--left-col', required=True,
+                                help='Column name in left dataset')
+    simjoin_parser.add_argument('--right-col', required=True,
+                                help='Column name in right dataset')
+    simjoin_parser.add_argument('--k', '-k', type=int, default=1,
+                                help='Number of matches per left row (default: 1)')
+    simjoin_parser.add_argument('--embedding-model', '-e', default='minishlab/potion-base-8M',
+                                help='Embedding model to use (default: minishlab/potion-base-8M)')
+    simjoin_parser.add_argument('--left-index', help='Directory for left dataset index (temp if not specified)')
+    simjoin_parser.add_argument('--right-index', help='Directory for right dataset index (temp if not specified)')
+    simjoin_parser.add_argument('--keep-index', action='store_true',
+                                help='Keep indices after join (only for temp indices)')
+    simjoin_parser.add_argument('--output', '-o', help='Output file (prints to stdout if not specified)')
+
     args = parser.parse_args()
 
     if not args.command:
@@ -463,6 +536,8 @@ Examples:
             cmd_index(args)
         elif args.command == 'semsearch':
             cmd_semsearch(args)
+        elif args.command == 'sim-join':
+            cmd_simjoin(args)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
