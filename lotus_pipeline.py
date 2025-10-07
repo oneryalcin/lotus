@@ -17,6 +17,9 @@ class PipelineRunner:
         self.config = config
         self.variables: Dict[str, Any] = {}
         self.lm = None
+        self.rm = None
+        self.vs = None
+        self.index_dirs: Dict[str, str] = {}  # Track index directories
 
     def setup(self):
         """Initialize LOTUS with the specified configuration."""
@@ -25,9 +28,20 @@ class PipelineRunner:
 
         model_config = self.config.get('model', {})
         model_name = model_config.get('name', 'gpt-4o-mini')
+        embedding_model = model_config.get('embedding_model')
 
         self.lm = LM(model=model_name)
-        lotus.settings.configure(lm=self.lm)
+
+        # Setup embeddings if specified
+        if embedding_model:
+            from lotus.models import Model2VecRM
+            from lotus.vector_store import VicinityVS
+
+            self.rm = Model2VecRM(model=embedding_model)
+            self.vs = VicinityVS(backend="BASIC", metric="cosine")
+            lotus.settings.configure(lm=self.lm, rm=self.rm, vs=self.vs)
+        else:
+            lotus.settings.configure(lm=self.lm)
 
     def load_data(self, step: Dict[str, Any]):
         """Load data from a file."""
@@ -113,6 +127,82 @@ class PipelineRunner:
 
         elif step_type == 'aggregate':
             result = pd.DataFrame({'result': [df.sem_agg(step['instruction'])._output[0]]})
+
+        elif step_type == 'index':
+            if not self.rm or not self.vs:
+                raise ValueError("Embedding model not configured. Add 'embedding_model' to pipeline config.")
+            index_dir = step['index_dir']
+            column = step['column']
+            result = df.sem_index(column, index_dir)
+            # Store index dir both by step name and column name for lookup
+            if 'name' in step:
+                self.index_dirs[step['name']] = index_dir
+            self.index_dirs[column] = index_dir
+
+        elif step_type == 'dedup':
+            if not self.rm or not self.vs:
+                raise ValueError("Embedding model not configured. Add 'embedding_model' to pipeline config.")
+            column = step['column']
+            threshold = step.get('threshold', 0.65)
+            index_dir = step.get('index_dir', self.index_dirs.get(column))
+            if not index_dir:
+                raise ValueError(f"No index found for column '{column}'. Add 'index' step first or specify 'index_dir'.")
+            df = df.sem_index(column, index_dir)
+            result = df.sem_dedup(column, threshold=threshold)
+
+        elif step_type == 'cluster':
+            if not self.rm or not self.vs:
+                raise ValueError("Embedding model not configured. Add 'embedding_model' to pipeline config.")
+            # Fix FAISS threading issues
+            import os
+            os.environ['OMP_NUM_THREADS'] = '1'
+
+            column = step['column']
+            num_clusters = step['num_clusters']
+
+            # Reset index to ensure continuous 0-based indexing (required for clustering)
+            df = df.reset_index(drop=True)
+
+            # Create a new index for this dataframe (can't reuse old index with different rows)
+            import tempfile
+            cluster_index = tempfile.mkdtemp(prefix='pipeline_cluster_')
+            df = df.sem_index(column, cluster_index)
+            result = df.sem_cluster_by(column, ncentroids=num_clusters)
+
+        elif step_type == 'semsearch':
+            if not self.rm or not self.vs:
+                raise ValueError("Embedding model not configured. Add 'embedding_model' to pipeline config.")
+            column = step['column']
+            query = step['query']
+            k = step.get('k', 5)
+            index_dir = step.get('index_dir', self.index_dirs.get(column))
+            if not index_dir:
+                raise ValueError(f"No index found for column '{column}'. Add 'index' step first or specify 'index_dir'.")
+            df = df.sem_index(column, index_dir)
+            result = df.sem_search(column, query, K=k)
+
+        elif step_type == 'sim_join':
+            if not self.rm or not self.vs:
+                raise ValueError("Embedding model not configured. Add 'embedding_model' to pipeline config.")
+            right_df = self.variables[step['right']]
+            left_col = step['left_col']
+            right_col = step['right_col']
+            k = step.get('k', 1)
+
+            # Index both if needed
+            left_index = step.get('left_index', self.index_dirs.get(left_col))
+            right_index = step.get('right_index', self.index_dirs.get(right_col))
+
+            if not left_index:
+                import tempfile
+                left_index = tempfile.mkdtemp(prefix='pipeline_left_')
+            if not right_index:
+                import tempfile
+                right_index = tempfile.mkdtemp(prefix='pipeline_right_')
+
+            df = df.sem_index(left_col, left_index)
+            right_df = right_df.sem_index(right_col, right_index)
+            result = df.sem_sim_join(right_df, left_col, right_col, K=k)
 
         else:
             raise ValueError(f"Unknown step type: {step_type}")
