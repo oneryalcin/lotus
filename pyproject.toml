@@ -25,11 +25,13 @@ dependencies = [
     "backoff>=2.2.1,<3.0.0",
     "faiss-cpu>=1.8.0.post1,<2.0.0",
     "litellm>=1.51.0,<2.0.0",
+    "model2vec",
     "numpy>=1.25.0,<2.0.0",
     "pandas>=2.0.0,<3.0.0",
     "pillow>=9.0.0",
     "tiktoken>=0.7.0,<1.0.0",
     "tqdm>=4.66.4,<5.0.0",
+    "vicinity",
 ]
 
 [tool.setuptools]
@@ -74,10 +76,6 @@ web_search = [
 ]
 cli = [
     "pyyaml",
-]
-model2vec = [
-    "model2vec",
-    "vicinity",
 ]
 sentence_transformers = [
     "sentence-transformers>=3.0.1,<4.0.0",
