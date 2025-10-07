@@ -234,6 +234,10 @@ def cmd_dedup(args):
 
 def cmd_cluster(args):
     """Perform semantic clustering on data."""
+    # Fix FAISS threading issues on some platforms
+    import os
+    os.environ['OMP_NUM_THREADS'] = '1'
+
     _, rm, vs = setup_lotus_embeddings(args.embedding_model)
     df = load_data(args.input)
 
