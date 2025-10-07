@@ -26,7 +26,7 @@ dependencies = [
     "faiss-cpu>=1.8.0.post1,<2.0.0",
     "litellm>=1.51.0,<2.0.0",
     "model2vec",
-    "numpy>=1.25.0,<2.0.0",
+    "numpy>=1.25.0,<3.0.0",
     "pandas>=2.0.0,<3.0.0",
     "pillow>=9.0.0",
     "tiktoken>=0.7.0,<1.0.0",
