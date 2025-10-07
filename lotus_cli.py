@@ -274,6 +274,52 @@ def cmd_cluster(args):
             shutil.rmtree(index_dir)
 
 
+def cmd_index(args):
+    """Create a persistent vector index for semantic search."""
+    _, rm, vs = setup_lotus_embeddings(args.embedding_model)
+    df = load_data(args.input)
+
+    print(f"Loaded {len(df)} rows from {args.input}")
+    print(f"Indexing column: {args.column}")
+    print(f"Index directory: {args.index_dir}")
+
+    # Create index
+    df = df.sem_index(args.column, args.index_dir)
+
+    print(f"✓ Indexed {len(df)} vectors")
+    print(f"✓ Index saved to {args.index_dir}")
+    print(f"\nUse 'lotus semsearch' to query this index")
+
+
+def cmd_semsearch(args):
+    """Search a pre-built index with semantic queries."""
+    _, rm, vs = setup_lotus_embeddings(args.embedding_model)
+
+    # Load the indexed data
+    if not args.data:
+        raise ValueError("--data is required: path to the original CSV/JSON file that was indexed")
+
+    df = load_data(args.data)
+
+    print(f"Loaded {len(df)} rows from {args.data}")
+    print(f"Loading index from: {args.index_dir}")
+    print(f"Query: {args.query}")
+    print(f"Top K: {args.k}")
+
+    # Load index and search
+    df = df.sem_index(args.column, args.index_dir)
+    result = df.sem_search(args.column, args.query, K=args.k)
+
+    print(f"\nFound {len(result)} results")
+
+    if args.output:
+        save_data(result, args.output)
+        print(f"Saved to {args.output}")
+    else:
+        print("\nResults:")
+        print(result)
+
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -367,6 +413,31 @@ Examples:
                                 help='Keep the index after clustering (only applies to temp indices)')
     cluster_parser.add_argument('--output', '-o', help='Output file (prints to stdout if not specified)')
 
+    # Index command
+    index_parser = subparsers.add_parser('index', help='Create a persistent vector index')
+    index_parser.add_argument('input', help='Input CSV or JSON file')
+    index_parser.add_argument('--column', '-c', required=True, help='Column to index')
+    index_parser.add_argument('--index-dir', '-d', required=True,
+                              help='Directory to save the index')
+    index_parser.add_argument('--embedding-model', '-e', default='minishlab/potion-base-8M',
+                              help='Embedding model to use (default: minishlab/potion-base-8M)')
+
+    # Semsearch command
+    semsearch_parser = subparsers.add_parser('semsearch', help='Search a pre-built index')
+    semsearch_parser.add_argument('--data', '-d', required=True,
+                                  help='Original CSV/JSON file that was indexed')
+    semsearch_parser.add_argument('--index-dir', '-i', required=True,
+                                  help='Directory containing the index')
+    semsearch_parser.add_argument('--column', '-c', required=True,
+                                  help='Column that was indexed')
+    semsearch_parser.add_argument('--query', '-q', required=True,
+                                  help='Search query')
+    semsearch_parser.add_argument('--k', '-k', type=int, default=5,
+                                  help='Number of results to return (default: 5)')
+    semsearch_parser.add_argument('--embedding-model', '-e', default='minishlab/potion-base-8M',
+                                  help='Embedding model to use (default: minishlab/potion-base-8M)')
+    semsearch_parser.add_argument('--output', '-o', help='Output file (prints to stdout if not specified)')
+
     args = parser.parse_args()
 
     if not args.command:
@@ -388,6 +459,10 @@ Examples:
             cmd_dedup(args)
         elif args.command == 'cluster':
             cmd_cluster(args)
+        elif args.command == 'index':
+            cmd_index(args)
+        elif args.command == 'semsearch':
+            cmd_semsearch(args)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
