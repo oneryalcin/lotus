@@ -27,7 +27,6 @@ dependencies = [
     "litellm>=1.51.0,<2.0.0",
     "numpy>=1.25.0,<2.0.0",
     "pandas>=2.0.0,<3.0.0",
-    "sentence-transformers>=3.0.1,<4.0.0",
     "tiktoken>=0.7.0,<1.0.0",
     "tqdm>=4.66.4,<5.0.0",
 ]
@@ -78,6 +77,9 @@ cli = [
 model2vec = [
     "model2vec",
     "vicinity",
+]
+sentence_transformers = [
+    "sentence-transformers>=3.0.1,<4.0.0",
 ]
 
 [project.scripts]

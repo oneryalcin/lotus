@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import torch
 from numpy.typing import NDArray
@@ -11,6 +13,23 @@ from lotus.models.rm import RM
 class SentenceTransformersRM(RM):
     """
     A retrieval model based on Sentence Transformers.
+
+    .. deprecated:: 1.2.0
+        SentenceTransformersRM is deprecated and will be removed in a future version.
+        Use :class:`~lotus.models.Model2VecRM` instead for faster, lightweight embeddings
+        without PyTorch dependency.
+
+        To install: ``pip install 'lotus-ai[model2vec]'``
+
+        Example migration::
+
+            # Old (deprecated)
+            from lotus.models import SentenceTransformersRM
+            rm = SentenceTransformersRM(model="intfloat/e5-base-v2")
+
+            # New (recommended)
+            from lotus.models import Model2VecRM
+            rm = Model2VecRM(model="minishlab/potion-base-8M")
 
     This class provides functionality to generate embeddings for documents using
     Sentence Transformers models. It supports batch processing and optional
@@ -41,6 +60,14 @@ class SentenceTransformersRM(RM):
             device: Device to run the model on (e.g., "cuda", "cpu").
                     If None, uses default device. Defaults to None.
         """
+        warnings.warn(
+            "SentenceTransformersRM is deprecated and will be removed in a future version. "
+            "Use Model2VecRM instead for faster, lightweight embeddings without PyTorch dependency. "
+            "Install with: pip install 'lotus-ai[model2vec]'. "
+            "See https://github.com/MinishLab/model2vec for more information.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.model: str = model
         self.max_batch_size: int = max_batch_size
         self.normalize_embeddings: bool = normalize_embeddings
