@@ -1,0 +1,30 @@
+# Example: Semantic Deduplication Pipeline
+#
+# This pipeline demonstrates semantic deduplication using model2vec embeddings.
+# It removes duplicate course listings based on semantic similarity.
+
+model:
+  name: gpt-4o-mini  # LLM for any text operations
+  embedding_model: minishlab/potion-base-8M  # Fast static embeddings
+
+steps:
+  # Step 1: Index the course names for semantic operations
+  - type: index
+    name: indexed_courses
+    source: courses_with_duplicates.csv
+    column: Course Name
+    index_dir: ./course_index
+
+  # Step 2: Remove semantic duplicates
+  # Courses with >65% similarity will be deduplicated
+  - type: dedup
+    name: unique_courses
+    input: indexed_courses
+    column: Course Name
+    threshold: 0.65
+    output: unique_courses.csv
+
+# Expected behavior:
+# - "Machine Learning 101" and "Introduction to ML" → Keep one
+# - "Computer Security" and "Cybersecurity Basics" → Keep one
+# - Unrelated courses → Keep all

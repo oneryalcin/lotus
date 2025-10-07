@@ -148,21 +148,25 @@ python lotus_pipeline.py pipeline.yaml --show-usage
 
 ## Supported Operations
 
-### Filter
+### LLM-Based Operations
+
+These operations use language models for reasoning and understanding.
+
+#### Filter
 Filter rows based on natural language predicate.
 
 ```bash
 lotus_cli.py filter INPUT --condition CONDITION [--output OUTPUT]
 ```
 
-### Map
+#### Map
 Transform each row with natural language instruction.
 
 ```bash
 lotus_cli.py map INPUT --instruction INSTRUCTION [--suffix SUFFIX] [--output OUTPUT]
 ```
 
-### Extract
+#### Extract
 Extract structured fields from unstructured text.
 
 ```bash
@@ -173,14 +177,14 @@ Fields can be:
 - Simple: `"name,age,city"` - extracts fields without descriptions
 - JSON: `'{"name": "person's name", "age": "age in years"}'` - with descriptions
 
-### TopK
+#### TopK
 Rank rows by semantic criteria and select top-k.
 
 ```bash
 lotus_cli.py topk INPUT --criteria CRITERIA [--k K] [--output OUTPUT]
 ```
 
-### Search
+#### Search
 Search web sources and optionally rank results.
 
 ```bash
@@ -195,9 +199,82 @@ Supported corpora:
 - `tavily` - Tavily Search (requires TAVILY_API_KEY)
 - `you` - You.com Search (requires YOU_API_KEY)
 
+### Embedding-Based Operations
+
+Fast semantic operations using **model2vec** embeddings (no PyTorch required).
+
+**Installation:**
+```bash
+pip install 'lotus-ai[model2vec]'
+```
+
+#### Dedup - Semantic Deduplication
+Remove semantically similar duplicates.
+
+```bash
+lotus_cli.py dedup INPUT --column COLUMN [--threshold 0.65] [--output OUTPUT]
+```
+
+**Example:**
+```bash
+lotus_cli.py dedup courses.csv --column "Course Name" --threshold 0.65 --output unique.csv
+```
+
+#### Cluster - Semantic Clustering
+Group data into K semantic clusters.
+
+```bash
+lotus_cli.py cluster INPUT --column COLUMN --num-clusters K [--output OUTPUT]
+```
+
+**Example:**
+```bash
+lotus_cli.py cluster courses.csv --column "Course Name" --num-clusters 3 --output categorized.csv
+```
+
+#### Index - Create Searchable Index
+Create a persistent semantic index (one-time operation).
+
+```bash
+lotus_cli.py index INPUT --column COLUMN --index-dir DIR
+```
+
+**Example:**
+```bash
+lotus_cli.py index docs.csv --column Content --index-dir ./docs_index
+```
+
+#### Semsearch - Semantic Search
+Query an index with natural language.
+
+```bash
+lotus_cli.py semsearch --data INPUT --index-dir DIR --column COLUMN --query "search query" [--k 5] [--output OUTPUT]
+```
+
+**Example:**
+```bash
+lotus_cli.py semsearch --data docs.csv --index-dir ./docs_index --column Content --query "machine learning tutorials" --k 5
+```
+
+#### Sim-join - Fuzzy Similarity Join
+Join datasets with fuzzy name matching.
+
+```bash
+lotus_cli.py sim-join --left FILE1 --right FILE2 --left-col COL1 --right-col COL2 --k K [--output OUTPUT]
+```
+
+**Example:**
+```bash
+lotus_cli.py sim-join --left jobs.csv --right companies.csv --left-col "Company Name" --right-col "Company" --k 1
+```
+
+**See Also:** [EMBEDDING_EXAMPLES.md](examples/cli_examples/EMBEDDING_EXAMPLES.md) for detailed embedding operations guide
+
 ## Pipeline Step Types
 
-### filter
+### LLM-Based Steps
+
+#### filter
 ```yaml
 - type: filter
   name: step_name
@@ -206,7 +283,7 @@ Supported corpora:
   output: output.csv  # optional
 ```
 
-### map
+#### map
 ```yaml
 - type: map
   name: step_name
@@ -216,7 +293,7 @@ Supported corpora:
   output: output.csv
 ```
 
-### extract
+#### extract
 ```yaml
 - type: extract
   name: step_name
@@ -228,7 +305,7 @@ Supported corpora:
   output: output.csv
 ```
 
-### topk
+#### topk
 ```yaml
 - type: topk
   name: step_name
@@ -238,7 +315,7 @@ Supported corpora:
   output: output.csv
 ```
 
-### join
+#### join
 ```yaml
 - type: join
   name: step_name
@@ -248,7 +325,7 @@ Supported corpora:
   output: output.csv
 ```
 
-### search
+#### search
 ```yaml
 - type: search
   name: step_name
@@ -258,13 +335,75 @@ Supported corpora:
   output: output.csv
 ```
 
-### aggregate
+#### aggregate
 ```yaml
 - type: aggregate
   name: step_name
   input: previous_step
   instruction: "Summarize the {column} data"
   output: summary.json
+```
+
+### Embedding-Based Steps
+
+For pipelines using embeddings, add `embedding_model` to your config:
+
+```yaml
+model:
+  name: gpt-4o-mini
+  embedding_model: minishlab/potion-base-8M
+```
+
+#### index
+```yaml
+- type: index
+  name: step_name
+  source: input.csv  # or use 'input: previous_step'
+  column: column_name
+  index_dir: ./index_path
+```
+
+#### dedup
+```yaml
+- type: dedup
+  name: step_name
+  input: previous_step
+  column: column_name
+  threshold: 0.65  # similarity threshold (0.5-0.8)
+  output: output.csv
+```
+
+#### cluster
+```yaml
+- type: cluster
+  name: step_name
+  input: previous_step
+  column: column_name
+  num_clusters: 3
+  output: output.csv
+```
+
+#### semsearch
+```yaml
+- type: semsearch
+  name: step_name
+  input: previous_step
+  column: column_name
+  query: "natural language query"
+  k: 5
+  output: output.csv
+```
+
+#### sim_join
+```yaml
+- type: sim_join
+  name: step_name
+  input: left_step  # left dataframe
+  right: right_step  # right dataframe
+  left_col: column_in_left
+  right_col: column_in_right
+  k: 1  # number of matches per row
+  output: output.csv
 ```
 
 ## Configuration
