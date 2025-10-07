@@ -20,6 +20,25 @@ def setup_lotus(model: str = "gpt-4o-mini"):
     return lm
 
 
+def setup_lotus_embeddings(embedding_model: str = "minishlab/potion-base-8M", lm_model: str | None = None):
+    """Initialize LOTUS with embeddings support (model2vec + vicinity)."""
+    import lotus
+    from lotus.models import Model2VecRM
+    from lotus.vector_store import VicinityVS
+
+    rm = Model2VecRM(model=embedding_model)
+    vs = VicinityVS(backend="BASIC", metric="cosine")
+
+    if lm_model:
+        from lotus.models import LM
+        lm = LM(model=lm_model)
+        lotus.settings.configure(lm=lm, rm=rm, vs=vs)
+        return lm, rm, vs
+    else:
+        lotus.settings.configure(rm=rm, vs=vs)
+        return None, rm, vs
+
+
 def load_data(input_path: str):
     """Load data from CSV or JSON file."""
     import pandas as pd
@@ -178,6 +197,79 @@ def cmd_search(args):
         lm.print_total_usage()
 
 
+def cmd_dedup(args):
+    """Remove semantic duplicates from data."""
+    _, rm, vs = setup_lotus_embeddings(args.embedding_model)
+    df = load_data(args.input)
+
+    print(f"Loaded {len(df)} rows from {args.input}")
+    print(f"Deduplicating column: {args.column}")
+    print(f"Threshold: {args.threshold}")
+
+    # Create index directory name
+    import tempfile
+    import os
+    index_dir = args.index_dir if args.index_dir else os.path.join(tempfile.gettempdir(), f"lotus_dedup_{os.getpid()}")
+
+    # Index and deduplicate
+    df = df.sem_index(args.column, index_dir)
+    result = df.sem_dedup(args.column, threshold=args.threshold)
+
+    removed = len(df) - len(result)
+    print(f"Removed {removed} duplicates ({removed/len(df)*100:.1f}%)")
+    print(f"Remaining: {len(result)} rows")
+
+    if args.output:
+        save_data(result, args.output)
+        print(f"Saved to {args.output}")
+    else:
+        print(result)
+
+    # Clean up temp index if not specified
+    if not args.index_dir and not args.keep_index:
+        import shutil
+        if os.path.exists(index_dir):
+            shutil.rmtree(index_dir)
+
+
+def cmd_cluster(args):
+    """Perform semantic clustering on data."""
+    _, rm, vs = setup_lotus_embeddings(args.embedding_model)
+    df = load_data(args.input)
+
+    print(f"Loaded {len(df)} rows from {args.input}")
+    print(f"Clustering column: {args.column}")
+    print(f"Number of clusters: {args.num_clusters}")
+
+    # Create index directory name
+    import tempfile
+    import os
+    index_dir = args.index_dir if args.index_dir else os.path.join(tempfile.gettempdir(), f"lotus_cluster_{os.getpid()}")
+
+    # Index and cluster
+    df = df.sem_index(args.column, index_dir)
+    result = df.sem_cluster_by(args.column, ncentroids=args.num_clusters)
+
+    # Show cluster distribution
+    cluster_counts = result['cluster_id'].value_counts().sort_index()
+    print(f"\nCluster distribution:")
+    for cluster_id, count in cluster_counts.items():
+        print(f"  Cluster {cluster_id}: {count} rows")
+
+    if args.output:
+        save_data(result, args.output)
+        print(f"\nSaved to {args.output}")
+    else:
+        print("\nResults:")
+        print(result)
+
+    # Clean up temp index if not specified
+    if not args.index_dir and not args.keep_index:
+        import shutil
+        if os.path.exists(index_dir):
+            shutil.rmtree(index_dir)
+
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -245,6 +337,32 @@ Examples:
     search_parser.add_argument('--topk', '-k', type=int, help='Number of top results after ranking')
     search_parser.add_argument('--output', '-o', help='Output file (prints to stdout if not specified)')
 
+    # Dedup command
+    dedup_parser = subparsers.add_parser('dedup', help='Remove semantic duplicates')
+    dedup_parser.add_argument('input', help='Input CSV or JSON file')
+    dedup_parser.add_argument('--column', '-c', required=True, help='Column to deduplicate on')
+    dedup_parser.add_argument('--threshold', '-t', type=float, default=0.65,
+                              help='Similarity threshold for deduplication (default: 0.65)')
+    dedup_parser.add_argument('--embedding-model', '-e', default='minishlab/potion-base-8M',
+                              help='Embedding model to use (default: minishlab/potion-base-8M)')
+    dedup_parser.add_argument('--index-dir', help='Directory to store/load index (uses temp dir if not specified)')
+    dedup_parser.add_argument('--keep-index', action='store_true',
+                              help='Keep the index after deduplication (only applies to temp indices)')
+    dedup_parser.add_argument('--output', '-o', help='Output file (prints to stdout if not specified)')
+
+    # Cluster command
+    cluster_parser = subparsers.add_parser('cluster', help='Perform semantic clustering')
+    cluster_parser.add_argument('input', help='Input CSV or JSON file')
+    cluster_parser.add_argument('--column', '-c', required=True, help='Column to cluster on')
+    cluster_parser.add_argument('--num-clusters', '-n', type=int, required=True,
+                                help='Number of clusters to create')
+    cluster_parser.add_argument('--embedding-model', '-e', default='minishlab/potion-base-8M',
+                                help='Embedding model to use (default: minishlab/potion-base-8M)')
+    cluster_parser.add_argument('--index-dir', help='Directory to store/load index (uses temp dir if not specified)')
+    cluster_parser.add_argument('--keep-index', action='store_true',
+                                help='Keep the index after clustering (only applies to temp indices)')
+    cluster_parser.add_argument('--output', '-o', help='Output file (prints to stdout if not specified)')
+
     args = parser.parse_args()
 
     if not args.command:
@@ -262,6 +380,10 @@ Examples:
             cmd_topk(args)
         elif args.command == 'search':
             cmd_search(args)
+        elif args.command == 'dedup':
+            cmd_dedup(args)
+        elif args.command == 'cluster':
+            cmd_cluster(args)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
