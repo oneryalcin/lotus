@@ -1,11 +1,11 @@
 import pandas as pd
 
 import lotus
-from lotus.models import LM, SentenceTransformersRM
+from lotus.models import LM, Model2VecRM
 from lotus.vector_store import FaissVS
 
 lm = LM(max_tokens=2048)
-rm = SentenceTransformersRM(model="intfloat/e5-base-v2")
+rm = Model2VecRM(model="minishlab/potion-base-8M")
 vs = FaissVS()
 
 lotus.settings.configure(lm=lm, rm=rm, vs=vs)

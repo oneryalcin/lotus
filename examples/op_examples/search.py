@@ -1,11 +1,11 @@
 import pandas as pd
 
 import lotus
-from lotus.models import LM, CrossEncoderReranker, SentenceTransformersRM
+from lotus.models import LM, CrossEncoderReranker, Model2VecRM
 from lotus.vector_store import FaissVS
 
 lm = LM(model="gpt-4o-mini")
-rm = SentenceTransformersRM(model="intfloat/e5-base-v2")
+rm = Model2VecRM(model="minishlab/potion-base-8M")
 reranker = CrossEncoderReranker(model="mixedbread-ai/mxbai-rerank-large-v1")
 vs = FaissVS()
 

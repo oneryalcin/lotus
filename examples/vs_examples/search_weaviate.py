@@ -2,13 +2,13 @@ import pandas as pd
 import weaviate
 
 import lotus
-from lotus.models import SentenceTransformersRM
+from lotus.models import Model2VecRM
 from lotus.vector_store import WeaviateVS
 
 # First run `docker run -p 8080:8080 -p 50051:50051 cr.weaviate.io/semitechnologies/weaviate:1.29.1` to start the weaviate server
 client = weaviate.connect_to_local()
 
-rm = SentenceTransformersRM(model="intfloat/e5-base-v2")
+rm = Model2VecRM(model="minishlab/potion-base-8M")
 vs = WeaviateVS(client)
 
 lotus.settings.configure(rm=rm, vs=vs)

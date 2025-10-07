@@ -2,7 +2,7 @@ import pandas as pd
 from qdrant_client import QdrantClient
 
 import lotus
-from lotus.models import SentenceTransformersRM
+from lotus.models import Model2VecRM
 from lotus.vector_store import QdrantVS
 
 # Run this command to start the qdrant server
@@ -10,7 +10,7 @@ from lotus.vector_store import QdrantVS
 #    -v "$(pwd)/qdrant_storage:/qdrant/storage:z" \
 #    qdrant/qdrant
 client = QdrantClient(url="http://localhost:6333")
-rm = SentenceTransformersRM(model="intfloat/e5-base-v2")
+rm = Model2VecRM(model="minishlab/potion-base-8M")
 vs = QdrantVS(client)
 
 lotus.settings.configure(rm=rm, vs=vs)
