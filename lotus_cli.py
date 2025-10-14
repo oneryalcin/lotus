@@ -10,10 +10,24 @@ from pathlib import Path
 from typing import Optional
 
 import typer
+from typing_extensions import Annotated
 
 # Constants
 DEFAULT_LM_MODEL = "gemini/gemini-2.5-flash-lite-preview-09-2025"
 DEFAULT_EMBEDDING_MODEL = "minishlab/potion-base-8M"
+
+
+def version_callback(value: bool):
+    """Print version and exit."""
+    if value:
+        try:
+            from importlib.metadata import version
+            __version__ = version("lotus-ai")
+        except Exception:
+            __version__ = "unknown"
+        typer.echo(f"lotus-ai version {__version__}")
+        raise typer.Exit()
+
 
 # Create the main app
 app = typer.Typer(
@@ -22,6 +36,17 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
+
+
+@app.callback()
+def main_callback(
+    version: Annotated[
+        Optional[bool],
+        typer.Option("--version", "-v", help="Show version and exit", callback=version_callback, is_eager=True),
+    ] = None,
+):
+    """Lotus CLI - Semantic data processing from the command line."""
+    pass
 
 
 def setup_lotus(model: str = DEFAULT_LM_MODEL):
