@@ -91,7 +91,7 @@ pytest -k "filter" -v
 **Semantic Operators** (`lotus/sem_ops/`):
 - Each operator (sem_filter, sem_map, sem_extract, etc.) is in its own file
 - Operators extend pandas DataFrame with semantic capabilities via monkey-patching
-- Key operators: filter, map, extract, join, topk, agg, search, sim_join, dedup, cluster_by
+- Key operators: filter, map, extract, join, topk, agg, search, sim_join, dedup, cluster_by, partition_by
 - Operators are parameterized by natural language expressions (langex) with column refs in brackets: `{column_name}`
 
 **Models** (`lotus/models/`):
@@ -112,7 +112,7 @@ pytest -k "filter" -v
 **CLI** (`lotus_cli.py`, `lotus_pipeline.py`):
 - `lotus_cli.py`: Single-command interface using Typer
 - `lotus_pipeline.py`: YAML-based multi-step pipeline runner
-- Default models:
+- Default models defined in `lotus_cli.py`:
   - LM: `gemini/gemini-2.5-flash-lite-preview-09-2025`
   - Embeddings: `minishlab/potion-base-8M` (model2vec)
 
@@ -202,7 +202,7 @@ Required for tests that call models:
 ## Code Style
 
 **Linting**: Ruff (see `.pre-commit-config.yaml`)
-**Type Checking**: mypy with strict mode (see `mypy.ini`)
+**Type Checking**: mypy (see `mypy.ini`)
 **Formatting**: Ruff format
 **Line Length**: 120 chars
 

@@ -22,17 +22,17 @@ classifiers = [
 ]
 
 dependencies = [
-    "backoff>=2.2.1,<3.0.0",
-    "faiss-cpu>=1.8.0.post1,<2.0.0",
-    "litellm>=1.51.0,<2.0.0",
-    "model2vec",
-    "numpy>=1.25.0,<3.0.0",
-    "pandas>=2.0.0,<3.0.0",
-    "pillow>=9.0.0",
-    "tiktoken>=0.7.0,<1.0.0",
-    "tqdm>=4.66.4,<5.0.0",
-    "typer>=0.12.0",
-    "vicinity",
+    "backoff>=2.2.1,<2.4.0",
+    "faiss-cpu>=1.8.0.post1,<1.14.0",
+    "litellm>=1.51.0,<=1.81.14",
+    "model2vec>=0.7.0,<0.9.0",
+    "numpy>=1.25.0,<2.5.0",
+    "pandas>=2.0.0,<2.4.0",
+    "pillow>=9.0.0,<11.5.0",
+    "tiktoken>=0.7.0,<0.14.0",
+    "tqdm>=4.66.4,<4.69.0",
+    "typer>=0.12.0,<0.21.0",
+    "vicinity>=0.4.3,<0.6.0",
 ]
 
 [tool.setuptools]
